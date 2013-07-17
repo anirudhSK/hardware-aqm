@@ -16,7 +16,7 @@ input   Count                   i__count;
 output  TimeCtr                 o__output;
 
 /*** Combinational Logic        ***/
-assign  o__output   = (i__input + i__interval) / i__count;  // TODO Wrong formula, but okay for now
+assign  o__output   = (i__input + (i__interval / i__count));  // TODO Wrong formula, but okay for now
 
 endmodule
 
