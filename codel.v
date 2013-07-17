@@ -164,97 +164,109 @@ end
 
 always_comb
 begin
-    case (r__dropping__pff)
-        DONT_DROP:                  // The controller is currently in the DONT_DROP state
-        begin
-            w__control_law_input    =   w__time_counter;
-
-            if (~w__okay_to_drop)   // Not okay to drop the current packet (either because 
-            	                    // okay_to_drop is zero, or because of NULL
-            	                    // packet
+    if (i__link_ready)
+    begin
+        case (r__dropping__pff)
+            DONT_DROP:                  // The controller is currently in the DONT_DROP state
             begin
-                w__drop_next__next  =   r__drop_next__pff;
-                w__drop_this_packet =   1'b0;
+                w__control_law_input    =   w__time_counter;
 
-            	w__dropping__next   =   DONT_DROP;
-            	w__count__next      =   r__count__pff;
-            	if (~w__fifo_empty && i__link_ready)
-            		w__read_queue   =   1'b1;
-            	else
-            		w__read_queue   =   1'b0;
-            end
-            else
-            begin
-                if ( ((w__time_counter - r__drop_next__pff) < r__interval__pff) 
-                	    || (w__time_counter - w__first_above_time >= r__interval__pff) )
+                if (~w__okay_to_drop)   // Not okay to drop the current packet (either because 
+                	                    // okay_to_drop is zero, or because of NULL
+                	                    // packet
                 begin
-                    w__read_queue       =   i__link_ready;
-                    w__drop_this_packet =   1'b1;
+                    w__drop_next__next  =   r__drop_next__pff;
+                    w__drop_this_packet =   1'b0;
 
-                    if ((w__time_counter - r__drop_next__pff) < r__interval__pff)
-                    	w__count__next  =   (r__count__pff > 2'b10) ? (r__count__pff - 2'b10) : 1'b1;
+                	w__dropping__next   =   DONT_DROP;
+                	w__count__next      =   r__count__pff;
+                	if (~w__fifo_empty && i__link_ready)
+                		w__read_queue   =   1'b1;
+                	else
+                		w__read_queue   =   1'b0;
+                end
+                else
+                begin
+                    if ( ((w__time_counter - r__drop_next__pff) < r__interval__pff) 
+                    	    || (w__time_counter - w__first_above_time >= r__interval__pff) )
+                    begin
+                        w__read_queue       =   i__link_ready;
+                        w__drop_this_packet =   1'b1;
+
+                        if ((w__time_counter - r__drop_next__pff) < r__interval__pff)
+                        	w__count__next  =   (r__count__pff > 2'b10) ? (r__count__pff - 2'b10) : 1'b1;
+                        else
+                        	w__count__next  =   1'b1;
+
+                        w__drop_next__next  =   w__next_time_to_drop;   
+
+                        w__dropping__next   =   DROP;
+                    end
                     else
-                    	w__count__next  =   1'b1;
-
-                    w__drop_next__next  =   w__next_time_to_drop;   
-
-                    w__dropping__next   =   DROP;
-                end
-                else
-                begin 
-                    w__read_queue       =   i__link_ready;
-                    w__drop_this_packet =   1'b0;
-                    w__count__next      =   r__count__pff;
-                    w__dropping__next   =   DONT_DROP;
-                    w__drop_next__next  =   r__drop_next__pff;
+                    begin 
+                        w__read_queue       =   i__link_ready;
+                        w__drop_this_packet =   1'b0;
+                        w__count__next      =   r__count__pff;
+                        w__dropping__next   =   DONT_DROP;
+                        w__drop_next__next  =   r__drop_next__pff;
+                    end
                 end
             end
-        end
 
-        DROP:       // DROP state
-        begin
-            if (~w__okay_to_drop)
+            DROP:       // DROP state
             begin
-                w__dropping__next   =   DONT_DROP;
-                w__read_queue       =   ~w__fifo_empty && i__link_ready;
+                if (~w__okay_to_drop)
+                begin
+                    w__dropping__next   =   DONT_DROP;
+                    w__read_queue       =   ~w__fifo_empty && i__link_ready;
+                    w__count__next      =   r__count__pff;
+                    w__control_law_input=   r__drop_next__pff;
+                    w__drop_next__next  =   w__next_time_to_drop;
+                    w__drop_this_packet =   1'b0;
+                end
+                else
+                begin
+                    if (w__time_counter < r__drop_next__pff)
+                    begin
+                        w__drop_this_packet =   1'b0;
+                        w__dropping__next   =   DONT_DROP;
+                        w__read_queue       =   i__link_ready;
+                        w__count__next      =   r__count__pff;
+                        w__control_law_input=   w__time_counter;
+                        w__drop_next__next  =   r__drop_next__pff;
+                    end
+                    else
+                    begin
+                        w__drop_this_packet =   1'b1;
+                        w__dropping__next   =   DROP;
+                        w__read_queue       =   i__link_ready;
+                        w__count__next      =   r__count__pff + 1'b1;
+                        w__control_law_input=   w__time_counter;        // Doesnt matter
+                        w__drop_next__next  =   r__drop_next__pff;
+                    end
+                end
+            end
+
+            default: 
+            begin
+                w__dropping__next   =   r__dropping__pff;
                 w__count__next      =   r__count__pff;
-                w__control_law_input=   r__drop_next__pff;
-                w__drop_next__next  =   w__next_time_to_drop;
+                w__read_queue       =   1'b0;
+                w__drop_next__next  =   r__drop_next__pff;
+                w__control_law_input=   w__time_counter;
                 w__drop_this_packet =   1'b0;
             end
-            else
-            begin
-                if (w__time_counter < r__drop_next__pff)
-                begin
-                    w__drop_this_packet =   1'b0;
-                    w__dropping__next   =   DONT_DROP;
-                    w__read_queue       =   i__link_ready;
-                    w__count__next      =   r__count__pff;
-                    w__control_law_input=   w__time_counter;
-                    w__drop_next__next  =   r__drop_next__pff;
-                end
-                else
-                begin
-                    w__drop_this_packet =   1'b1;
-                    w__dropping__next   =   DROP;
-                    w__read_queue       =   i__link_ready;
-                    w__count__next      =   r__count__pff + 1'b1;
-                    w__control_law_input=   w__time_counter;        // Doesnt matter
-                    w__drop_next__next  =   r__drop_next__pff;
-                end
-            end
-        end
-
-        default: 
-        begin
-            w__dropping__next   =   r__dropping__pff;
-            w__count__next      =   r__count__pff;
-            w__read_queue       =   1'b0;
-            w__drop_next__next  =   r__drop_next__pff;
-            w__control_law_input=   w__time_counter;
-            w__drop_this_packet =   1'b0;
-        end
-    endcase
+        endcase
+    end
+    else
+    begin
+        w__dropping__next   =   r__dropping__pff;
+        w__count__next      =   r__count__pff;
+        w__read_queue       =   1'b0;
+        w__drop_next__next  =   r__drop_next__pff;
+        w__control_law_input=   w__time_counter;
+        w__drop_this_packet =   1'b0;
+    end
 end
 
 
