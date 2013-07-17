@@ -9,8 +9,8 @@ localparam  NUM_COUNT           =   (1'b1<<32)-1;
 localparam  TIME_COUNTER_LENGTH =   32;
 localparam  INTERVAL            =   32'b00000000000000001001010101000111;
 
-localparam  PACKET_DATA_WIDTH   =   1024;
-localparam  QUEUE_DEPTH         =   10;
+localparam  PACKET_DATA_WIDTH   =   10;
+localparam  QUEUE_DEPTH         =   2;
 
 typedef logic   [31:0]                      TimeCtr;
 typedef logic   [31:0]                      Count;
