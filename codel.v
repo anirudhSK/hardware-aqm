@@ -58,14 +58,14 @@ output      logic               o__drop_packet;
 
 /*** Registers                  ***/
 Dropping                        r__dropping__pff;
-TimeCtr                         r__count__pff;
+Count                           r__count__pff;
 TimeCtr                         r__drop_next__pff;
 TimeCtr                         r__interval__pff;
 
 /*** Wires                      ***/
 // Next state signals
 Dropping                        w__dropping__next;
-TimeCtr                         w__count__next;
+Count                           w__count__next;
 TimeCtr                         w__time_counter;
 TimeCtr                         w__time_counter__next;
 TimeCtr                         w__drop_next__next;
